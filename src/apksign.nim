@@ -32,16 +32,18 @@ proc main() =
   var src: ZipArchive
   doAssert src.open(apkIn, fmRead)
 
+  # FIXME: manifest.mf & cert.sf lines must be wrapped at 72 bytes (70 + CR + LF)
+  # FIXME: files in cert.sf (or manifest.mf? or both?) must be sorted
   var signer = Signer(entryHash: initTable[string, string]())
-  signer.buildManifestSf(src)
+  signer.buildManifestMf(src)
   signer.buildCertSf(src)
   signer.buildCertRsa()
   signer.buildSignedAPK(src)
 
 
-proc buildManifestSf(signer: var Signer, src: var ZipArchive) =
+proc buildManifestMf(signer: var Signer, src: var ZipArchive) =
 
-  echo "- Building MANIFEST.SF"
+  echo "- Building MANIFEST.MF"
 
   signer.manifest.add joinCrLf([
      "Manifest-Version: 1.0",
