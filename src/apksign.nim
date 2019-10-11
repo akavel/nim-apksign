@@ -8,6 +8,8 @@ import tables
 import nimcrypto
 import os, osproc
 
+when defined windows:
+  {.passl: "-lz".}
 
 const
   apkIn = "demo.apk"
