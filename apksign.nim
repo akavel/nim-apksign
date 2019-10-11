@@ -1,4 +1,4 @@
-
+{.experimental: "codeReordering".}
 import zip/zipfiles
 import streams
 import std/sha1
@@ -24,16 +24,17 @@ type
     manifestHash: string
     entryHash: Table[string, string]
 
+main()
 
-proc base64sha1(s: string): string =
-  base64.encode(sha256.digest(s).data)
+proc main() =
+  var src: ZipArchive
+  doAssert src.open(apkIn, fmRead)
 
-proc skipFile(s: string): bool =
-  let (dir, name, ext) = s.splitFile
-  return dir == "META-INF" and ext in [ ".MF", ".SF", ".RSA", ".DSA", ".EC" ]
-
-proc joinCrLf(ss: openarray[string]): string =
-  ss.join("\r\n") & "\r\n\r\n"
+  var signer = Signer(entryHash: initTable[string, string]())
+  signer.buildManifestSf(src)
+  signer.buildCertSf(src)
+  signer.buildCertRsa()
+  signer.buildSignedAPK(src)
 
 
 proc buildManifestSf(signer: var Signer, src: var ZipArchive) =
@@ -59,7 +60,6 @@ proc buildManifestSf(signer: var Signer, src: var ZipArchive) =
 
   signer.manifestHash = base64sha1(signer.manifest)
 
-
 proc buildCertSf(signer: var Signer, src: var ZipArchive) =
 
   echo "- Building CERT.SF"
@@ -69,7 +69,7 @@ proc buildCertSf(signer: var Signer, src: var ZipArchive) =
     "Created-By: 1.0 (Android)",
     "SHA-256-Digest-Manifest: " & signer.manifestHash,
   ]
-  
+
   for f in src.walkFiles:
     if not f.skipFile:
       signer.certSf.add joinCrLf [
@@ -117,14 +117,17 @@ proc buildSignedApk(signer: var Signer, src: var ZipArchive) =
   dst.close()
 
 
-proc main() =
-  var src: ZipArchive
-  doAssert src.open(apkIn, fmRead)
+proc skipFile(s: string): bool =
+  let (dir, name, ext) = s.splitFile
+  return dir == "META-INF" and ext in [ ".MF", ".SF", ".RSA", ".DSA", ".EC" ]
 
-  var signer = Signer(entryHash: initTable[string, string]())
-  signer.buildManifestSf(src)
-  signer.buildCertSf(src)
-  signer.buildCertRsa()
-  signer.buildSignedAPK(src)
+proc joinCrLf(ss: openarray[string]): string =
+  ss.join("\r\n") & "\r\n\r\n"
 
-main()
+proc base64sha1(s: string): string =
+  base64.encode(sha256.digest(s).data)
+
+
+
+
+
